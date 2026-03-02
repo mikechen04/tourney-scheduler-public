@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /schedulers/{schedulerId} {
+      // read is public but only before expiry
+      allow read: if !isExpired(resource.data);
+      // write requires firebase auth and valid scheduler shape
+      allow create: if isSignedIn() && isValidSchedulerDoc() && hasValidCreateExpiry();
+      allow update: if isSignedIn() && isValidSchedulerDoc() && keepsSameExpiry() && !isExpired(resource.data);
+
+      // allow signed-in users to delete active rooms
+      allow delete: if isSignedIn() && !isExpired(resource.data);
+
+      function isValidSchedulerDoc() {
+        return request.resource.data.keys().hasOnly([
+          "teamNames",
+          "availability",
+          "createdAt",
+          "updatedAt",
+          "expiresAt"
+        ]) &&
+        request.resource.data.teamNames is map &&
+        request.resource.data.teamNames.keys().hasOnly(["A", "B"]) &&
+        request.resource.data.teamNames.A is string &&
+        request.resource.data.teamNames.B is string &&
+        request.resource.data.availability is map &&
+        (
+          !request.resource.data.keys().hasAny(["expiresAt"]) ||
+          request.resource.data.expiresAt is timestamp
+        );
+      }
+
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isExpired(data) {
+        // legacy docs had no expiry
+        return data.keys().hasAny(["expiresAt"]) &&
+          request.time >= data.expiresAt;
+      }
+
+      function hasValidCreateExpiry() {
+        // room should expire around 1 week from creation
+        return request.resource.data.keys().hasAny(["expiresAt"]) &&
+          request.resource.data.expiresAt > request.time + duration.value(6, "d") &&
+          request.resource.data.expiresAt < request.time + duration.value(8, "d");
+      }
+
+      function keepsSameExpiry() {
+        // stop clients from extending room lifetime forever
+        return (
+          (!resource.data.keys().hasAny(["expiresAt"]) &&
+            !request.resource.data.keys().hasAny(["expiresAt"])) ||
+          (resource.data.keys().hasAny(["expiresAt"]) &&
+            request.resource.data.keys().hasAny(["expiresAt"]) &&
+            request.resource.data.expiresAt == resource.data.expiresAt)
+        );
+      }
+    }
+  }
+}

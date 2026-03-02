@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>osu! Tournament Scheduler</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            background: #0f1119;
+            color: #e6eaf5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 540px;
+            background: #171a26;
+            border: 1px solid #2a2f40;
+            border-radius: 12px;
+            padding: 28px;
+            text-align: center;
+        }
+
+        h1 {
+            margin: 0 0 12px;
+            font-size: 32px;
+        }
+
+        .title-link {
+            color: #e6eaf5;
+            text-decoration: none;
+        }
+
+        .title-link:hover {
+            text-decoration: none;
+        }
+
+        p {
+            margin: 0 0 24px;
+            color: #9aa4c0;
+        }
+
+        button {
+            border: 1px solid #3c4562;
+            background: #111527;
+            color: #e6eaf5;
+            border-radius: 8px;
+            padding: 12px 18px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            filter: brightness(1.15);
+        }
+
+        footer {
+            margin-top: 26px;
+            color: #9aa4c0;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        a {
+            color: #8ec4ff;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .create-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(6, 8, 14, 0.68);
+            backdrop-filter: blur(6px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        .create-overlay.show {
+            display: flex;
+        }
+
+        .create-modal {
+            width: 100%;
+            max-width: 460px;
+            background: #171a26;
+            border: 1px solid #31364b;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: left;
+            margin: auto 0;
+            max-height: calc(100vh - 48px);
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .create-modal h2 {
+            margin: 0 0 10px;
+            font-size: 22px;
+        }
+
+        .create-modal p {
+            margin: 0 0 12px;
+            color: #9aa4c0;
+            font-size: 13px;
+        }
+
+        .field-label {
+            display: block;
+            color: #b5bfd8;
+            font-size: 12px;
+            margin: 0 0 6px;
+            text-transform: uppercase;
+        }
+
+        .field-input {
+            width: 100%;
+            border: 1px solid #4a5574;
+            background-color: #202842;
+            color: #e6eaf5;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 14px;
+            height: 38px;
+            margin-bottom: 10px;
+        }
+
+        .create-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .create-row button {
+            font-size: 14px;
+            padding: 10px 14px;
+        }
+
+        #cancelCreateBtn {
+            background: #1b2135;
+        }
+
+        .create-note {
+            margin-top: 10px;
+            min-height: 16px;
+            color: #9aa4c0;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <main class="card">
+        <h1><a class="title-link" href="index.html">osu! Tournament Scheduler</a></h1>
+        <p>less scheduling headaches i hope</p>
+        <button id="createSchedulerBtn">Create a scheduler</button>
+
+        <footer></footer>
+    </main>
+    <div id="createOverlay" class="create-overlay">
+        <div class="create-modal">
+            <h2>create scheduler</h2>
+            <p>pick team names for this room</p>
+
+            <label class="field-label" for="createTeamAInput">Team A Name</label>
+            <input id="createTeamAInput" class="field-input" value="Team A" maxlength="40">
+
+            <label class="field-label" for="createTeamBInput">Team B Name</label>
+            <input id="createTeamBInput" class="field-input" value="Team B" maxlength="40">
+
+            <div class="create-row">
+                <button id="confirmCreateBtn">Create room</button>
+                <button id="cancelCreateBtn">Cancel</button>
+            </div>
+
+            <div id="createNote" class="create-note"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getFirestore, doc, setDoc, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDVNf4ozjFjMXk0whWW2QI41IDAiGHtG3A",
+            authDomain: "osu--tourney-scheduler.firebaseapp.com",
+            projectId: "osu--tourney-scheduler",
+            storageBucket: "osu--tourney-scheduler.firebasestorage.app",
+            messagingSenderId: "973890700587",
+            appId: "1:973890700587:web:6c04ed295001b739c3316e",
+            measurementId: "G-PJH3L7CT3B"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        function explainFirebaseSetupError(err) {
+            const code = err && err.code ? err.code : "";
+            const msg = err && err.message ? err.message : "unknown firebase error";
+
+            // keeping this simple so setup issues are easier to spot
+            if (code === "auth/operation-not-allowed") {
+                return "firebase auth failed: anonymous sign-in is disabled. enable it in firebase auth > sign-in method.";
+            }
+            if (code === "auth/configuration-not-found") {
+                return "firebase auth failed: auth config not found. open firebase console > authentication, click get started, then enable anonymous sign-in.";
+            }
+            if (code === "auth/network-request-failed") {
+                return "firebase auth failed: network request failed. check internet/firewall and try again.";
+            }
+            if (code === "permission-denied") {
+                return "firestore write failed: permission denied. deploy firestore.rules and make sure anonymous auth user is allowed.";
+            }
+            if (code === "unauthenticated") {
+                return "firestore write failed: unauthenticated request. anonymous auth likely did not complete.";
+            }
+            return "could not create scheduler. firebase error: " + (code || msg);
+        }
+
+        async function waitForSignedInUser(timeoutMs) {
+            return new Promise((resolve, reject) => {
+                let done = false;
+                const timeout = setTimeout(() => {
+                    if (done) {
+                        return;
+                    }
+                    done = true;
+                    unsub();
+                    reject(new Error("timed out waiting for firebase auth user"));
+                }, timeoutMs);
+
+                const unsub = onAuthStateChanged(auth, (user) => {
+                    if (!user || done) {
+                        return;
+                    }
+                    done = true;
+                    clearTimeout(timeout);
+                    unsub();
+                    resolve();
+                }, (err) => {
+                    if (done) {
+                        return;
+                    }
+                    done = true;
+                    clearTimeout(timeout);
+                    unsub();
+                    reject(err);
+                });
+            });
+        }
+
+        async function ensureFirebaseAuth() {
+            if (auth.currentUser) {
+                return;
+            }
+            await signInAnonymously(auth);
+            if (!auth.currentUser) {
+                await waitForSignedInUser(5000);
+            }
+        }
+
+        function createSchedulerData(teamAName, teamBName) {
+            const availability = {};
+            const days = ["Saturday", "Sunday", "Monday"];
+            for (let d = 0; d < days.length; d++) {
+                const day = days[d];
+                availability[day] = {};
+                for (let h = 0; h < 24; h++) {
+                    availability[day][h] = { A: [], B: [] };
+                }
+            }
+
+            // room expires in 7 days so old rooms clean themselves up
+            const expiresAt = Timestamp.fromDate(new Date(Date.now() + (7 * 24 * 60 * 60 * 1000)));
+
+            return {
+                teamNames: {
+                    A: teamAName,
+                    B: teamBName
+                },
+                availability: availability,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+                expiresAt: expiresAt
+            };
+        }
+
+        function makeId() {
+            // simple unique-ish id
+            return "sched-" + Date.now() + "-" + Math.floor(Math.random() * 100000);
+        }
+
+        function openCreateModal() {
+            const overlay = document.getElementById("createOverlay");
+            const aInput = document.getElementById("createTeamAInput");
+            const bInput = document.getElementById("createTeamBInput");
+            const note = document.getElementById("createNote");
+            note.textContent = "";
+            aInput.value = "Team A";
+            bInput.value = "Team B";
+            overlay.classList.add("show");
+            aInput.focus();
+            aInput.select();
+        }
+
+        function closeCreateModal() {
+            const overlay = document.getElementById("createOverlay");
+            overlay.classList.remove("show");
+        }
+
+        async function createSchedulerWithNames(teamAName, teamBName) {
+            try {
+                await ensureFirebaseAuth();
+                const id = makeId();
+                const schedulerRef = doc(db, "schedulers", id);
+                await setDoc(schedulerRef, createSchedulerData(teamAName, teamBName));
+                window.location.href = "scheduler.html?id=" + encodeURIComponent(id);
+            } catch (err) {
+                console.error("create scheduler failed", err);
+                alert(explainFirebaseSetupError(err));
+            }
+        }
+
+        document.getElementById("createSchedulerBtn").addEventListener("click", () => {
+            openCreateModal();
+        });
+
+        document.getElementById("cancelCreateBtn").addEventListener("click", () => {
+            closeCreateModal();
+        });
+
+        document.getElementById("createOverlay").addEventListener("click", (event) => {
+            // clicking dark background closes modal
+            if (event.target.id === "createOverlay") {
+                closeCreateModal();
+            }
+        });
+
+        document.getElementById("confirmCreateBtn").addEventListener("click", async () => {
+            const aInput = document.getElementById("createTeamAInput");
+            const bInput = document.getElementById("createTeamBInput");
+            const note = document.getElementById("createNote");
+            const confirmBtn = document.getElementById("confirmCreateBtn");
+
+            const teamAName = aInput.value.trim() || "Team A";
+            const teamBName = bInput.value.trim() || "Team B";
+
+            // tiny guard so both names are not exactly same by accident
+            if (teamAName.toLowerCase() === teamBName.toLowerCase()) {
+                note.textContent = "team names should be different";
+                return;
+            }
+
+            note.textContent = "creating room...";
+            confirmBtn.disabled = true;
+            try {
+                await createSchedulerWithNames(teamAName, teamBName);
+            } finally {
+                confirmBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>osu! Tournament Scheduler</title>
+    <style>
+        :root {
+            --bg: #181d2e;
+            --card: #232b42;
+            --line: #38435e;
+            --text: #eef3ff;
+            --muted: #b5bfd8;
+            --a: #4fa3ff;
+            --b: #f29f67;
+            --both: #7fd788;
+            --empty: #2b334b;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #181d2e;
+            color: var(--text);
+            padding: 24px;
+        }
+
+        .page {
+            max-width: 1250px;
+            margin: 0 auto;
+        }
+
+        .header {
+            margin-bottom: 16px;
+        }
+
+        .header-main-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .header-left {
+            min-width: 0;
+        }
+
+        .title {
+            margin: 0;
+            font-size: 30px;
+        }
+
+        .title-link {
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .title-link:hover {
+            text-decoration: none;
+        }
+
+        .room-code {
+            color: var(--muted);
+            margin-top: 8px;
+            font-size: 13px;
+        }
+
+        .identity-chip {
+            display: inline-block;
+            margin-top: 10px;
+            border: 1px solid #4c5878;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            color: var(--muted);
+            background: #222a42;
+        }
+
+        .expiry-chip {
+            border: 1px solid #4c5878;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            color: var(--muted);
+            background: #222a42;
+            white-space: nowrap;
+            margin-top: 2px;
+        }
+
+        .top-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 20px 0;
+        }
+
+        .field-card, .utility, .overlap-card {
+            background-color: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 12px;
+        }
+
+        .field-label {
+            display: block;
+            color: var(--muted);
+            font-size: 12px;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+
+        .field-input, .team-select {
+            width: 100%;
+            border: 1px solid #4a5574;
+            background-color: #202842;
+            color: var(--text);
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 14px;
+            height: 38px;
+        }
+
+        .utility {
+            margin-bottom: 14px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .utility-team {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 150px;
+        }
+
+        .utility-team .field-label {
+            margin: 0;
+            line-height: 1;
+        }
+
+        .btn {
+            border: 1px solid #4c5878;
+            background: #222a42;
+            color: var(--text);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 13px;
+            cursor: pointer;
+            height: 38px;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .btn:hover {
+            filter: brightness(1.12);
+        }
+
+        .btn-danger {
+            border-color: #7e4551;
+            background: #382230;
+        }
+
+        .save-note {
+            font-size: 12px;
+            color: var(--muted);
+            align-self: center;
+        }
+
+        .overlap-card {
+            margin-bottom: 16px;
+        }
+
+        .overlap-title {
+            margin: 0 0 8px 0;
+            font-size: 14px;
+        }
+
+        .overlap-list {
+            margin: 0;
+            padding-left: 18px;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .overlap-list strong {
+            color: var(--text);
+        }
+
+        .day-section {
+            background-color: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+
+        .day-header {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--line);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .day-title {
+            margin: 0;
+            font-size: 17px;
+        }
+
+        .day-note {
+            margin: 0;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .day-grid-wrap {
+            overflow-x: auto;
+            padding: 12px;
+        }
+
+        .day-grid {
+            min-width: 1080px;
+            display: grid;
+            grid-template-columns: 230px repeat(24, minmax(34px, 1fr));
+            border: 1px solid var(--line);
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .cell {
+            border-right: 1px solid var(--line);
+            border-bottom: 1px solid var(--line);
+            min-height: 40px;
+            background-color: var(--empty);
+            font-size: 12px;
+        }
+
+        .head-cell {
+            background-color: #202942;
+            color: var(--muted);
+            text-align: center;
+            font-weight: 600;
+            padding: 8px 4px;
+        }
+
+        .head-left {
+            text-align: left;
+            padding: 8px 8px;
+        }
+
+        .label-cell {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 6px;
+            background-color: #222c45;
+            padding: 8px;
+        }
+
+        .team-tag {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .team-tag.a {
+            color: var(--a);
+        }
+
+        .team-tag.b {
+            color: var(--b);
+        }
+
+        .slot {
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            transition: 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #dfe5f7;
+            font-size: 11px;
+            padding: 4px;
+        }
+
+        .slot:hover {
+            filter: brightness(1.1);
+        }
+
+        .slot.locked {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .slot.locked:hover {
+            filter: none;
+        }
+
+        .slot.team-a {
+            background-color: rgba(79, 163, 255, 0.45);
+            border-color: rgba(79, 163, 255, 0.8);
+        }
+
+        .slot.team-b {
+            background-color: rgba(242, 159, 103, 0.45);
+            border-color: rgba(242, 159, 103, 0.8);
+        }
+
+        .slot.both {
+            background-color: rgba(127, 215, 136, 0.45);
+            border-color: rgba(127, 215, 136, 0.8);
+            color: #0f1119;
+            font-weight: bold;
+        }
+
+        .slot-count {
+            opacity: 0.95;
+        }
+
+        .slot-hover-card {
+            position: fixed;
+            z-index: 400;
+            min-width: 220px;
+            max-width: 320px;
+            background: #1f2740;
+            border: 1px solid #4a5574;
+            border-radius: 10px;
+            padding: 8px 10px;
+            color: var(--text);
+            font-size: 12px;
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+            display: none;
+            pointer-events: none;
+        }
+
+        .slot-hover-title {
+            margin-bottom: 6px;
+            color: var(--muted);
+        }
+
+        .slot-hover-line {
+            margin-bottom: 4px;
+            line-height: 1.4;
+        }
+
+        .missing-wrap {
+            max-width: 700px;
+            margin: 40px auto;
+            background: #171a26;
+            border: 1px solid #2a2f40;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .home-link {
+            color: #8ec4ff;
+            text-decoration: none;
+        }
+
+        .home-link:hover {
+            text-decoration: underline;
+        }
+
+        .login-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(6, 8, 14, 0.68);
+            backdrop-filter: blur(6px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            padding: 16px;
+        }
+
+        .login-overlay.show {
+            display: flex;
+        }
+
+        .login-modal {
+            width: 100%;
+            max-width: 460px;
+            background: #171a26;
+            border: 1px solid #31364b;
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .login-modal h2 {
+            margin: 0 0 10px;
+            font-size: 22px;
+        }
+
+        .login-modal p {
+            margin: 0 0 12px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .login-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .login-name-wrap {
+            margin-top: 10px;
+        }
+
+        .login-team-label {
+            margin-top: 4px;
+        }
+
+        #loginTeamSelect {
+            text-align: center;
+            text-align-last: center;
+        }
+
+        footer {
+            margin-top: 18px;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        footer a {
+            color: #8ec4ff;
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 900px) {
+            body {
+                padding: 16px;
+            }
+            .top-controls {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+    <div id="slotHoverCard" class="slot-hover-card"></div>
+
+    <div id="loginOverlay" class="login-overlay">
+        <div class="login-modal">
+            <h2>choose login option</h2>
+            <p>pick a method, choose your team, and enter your display name.</p>
+
+            <label class="field-label" for="loginModeSelect">Login Method</label>
+            <select id="loginModeSelect" class="team-select">
+                <option value="osu">Login with osu!</option>
+                <option value="guest">Continue as guest</option>
+            </select>
+
+            <label class="field-label login-team-label" for="loginTeamSelect">Your Team</label>
+            <select id="loginTeamSelect" class="team-select">
+                <option value="A">Team A</option>
+                <option value="B">Team B</option>
+            </select>
+
+            <div class="login-name-wrap">
+                <label class="field-label" for="loginNameInput">Your Name</label>
+                <input id="loginNameInput" class="field-input" placeholder="enter your name or osu username">
+            </div>
+
+            <div class="login-row">
+                <button class="btn" id="loginContinueBtn">Continue</button>
+            </div>
+        </div>
+    </div>
+    <div id="deleteOverlay" class="login-overlay">
+        <div class="login-modal">
+            <h2>delete room</h2>
+            <p>this will permanently delete this room for everyone. this cannot be undone.</p>
+            <div class="login-row">
+                <button class="btn btn-danger" id="confirmDeleteRoomBtn">Delete room</button>
+                <button class="btn" id="cancelDeleteRoomBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import {
+            getFirestore,
+            doc,
+            getDoc,
+            setDoc,
+            deleteDoc,
+            onSnapshot,
+            serverTimestamp
+        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDVNf4ozjFjMXk0whWW2QI41IDAiGHtG3A",
+            authDomain: "osu--tourney-scheduler.firebaseapp.com",
+            projectId: "osu--tourney-scheduler",
+            storageBucket: "osu--tourney-scheduler.firebasestorage.app",
+            messagingSenderId: "973890700587",
+            appId: "1:973890700587:web:6c04ed295001b739c3316e",
+            measurementId: "G-PJH3L7CT3B"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        function explainFirebaseSetupError(err) {
+            const code = err && err.code ? err.code : "";
+            const msg = err && err.message ? err.message : "unknown firebase error";
+
+            // keep this super direct so setup problems are obvious
+            if (code === "auth/operation-not-allowed") {
+                return "could not connect to firebase auth. anonymous sign-in is disabled. enable it in firebase auth > sign-in method.";
+            }
+            if (code === "auth/configuration-not-found") {
+                return "could not connect to firebase auth. auth config not found. open firebase console > authentication, click get started, then enable anonymous sign-in.";
+            }
+            if (code === "auth/network-request-failed") {
+                return "could not connect to firebase auth. network request failed. check internet/firewall and try again.";
+            }
+            return "could not connect to firebase auth. firebase error: " + (code || msg);
+        }
+
+
+        const DAYS = ["Saturday", "Sunday", "Monday"];
+        const HOURS = 24;
+        const IDENT_KEY = "osuSchedulerIdentity";
+
+        const availability = {};
+        let schedulerId = "";
+        let currentUser = null;
+        let schedulerDocRef = null;
+        let schedulerUnsub = null;
+        let roomExpiresAt = null;
+
+        let dragState = {
+            isDown: false,
+            valueToSet: false
+        };
+
+        async function ensureFirebaseAuth() {
+            if (auth.currentUser) {
+                return;
+            }
+            await signInAnonymously(auth);
+        }
+
+        function createEmptyDayState() {
+            const dayState = {};
+            for (let h = 0; h < HOURS; h++) {
+                dayState[h] = { A: [], B: [] };
+            }
+            return dayState;
+        }
+
+        function buildInitialState() {
+            for (let i = 0; i < DAYS.length; i++) {
+                availability[DAYS[i]] = createEmptyDayState();
+            }
+        }
+
+        function formatHourLabel(hour) {
+            const from = String(hour).padStart(2, "0");
+            const to = String((hour + 1) % 24).padStart(2, "0");
+            return from + ":00-" + to + ":00";
+        }
+
+        function formatSimpleUtcHour(hour) {
+            return String(hour) + " UTC";
+        }
+
+        function escapeHtml(value) {
+            return String(value)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function getTeamNames() {
+            return {
+                A: document.getElementById("teamAName").value.trim() || "Team A",
+                B: document.getElementById("teamBName").value.trim() || "Team B"
+            };
+        }
+
+        function normalizeDayData(dayData) {
+            const fixed = {};
+            for (let h = 0; h < HOURS; h++) {
+                const slot = dayData && dayData[h] ? dayData[h] : {};
+                fixed[h] = {
+                    A: Array.isArray(slot.A) ? slot.A : [],
+                    B: Array.isArray(slot.B) ? slot.B : []
+                };
+            }
+            return fixed;
+        }
+
+        function ensureUniqueNames(arr) {
+            const seen = {};
+            const out = [];
+            for (let i = 0; i < arr.length; i++) {
+                const n = String(arr[i] || "").trim();
+                if (!n) {
+                    continue;
+                }
+                const key = n.toLowerCase();
+                if (seen[key]) {
+                    continue;
+                }
+                seen[key] = true;
+                out.push(n);
+            }
+            return out;
+        }
+
+        function updateAllTeamLabels() {
+            const names = getTeamNames();
+            document.querySelectorAll("[data-team-label='A']").forEach((el) => {
+                el.textContent = names.A;
+            });
+            document.querySelectorAll("[data-team-label='B']").forEach((el) => {
+                el.textContent = names.B;
+            });
+            updateLoginTeamOptions();
+            updateOverlapList();
+        }
+
+        function updateLoginTeamOptions() {
+            const select = document.getElementById("loginTeamSelect");
+            if (!select) {
+                return;
+            }
+
+            const current = select.value === "B" ? "B" : "A";
+            const names = getTeamNames();
+            const optionA = select.querySelector("option[value='A']");
+            const optionB = select.querySelector("option[value='B']");
+
+            if (optionA) {
+                optionA.textContent = names.A;
+            }
+            if (optionB) {
+                optionB.textContent = names.B;
+            }
+
+            select.value = current;
+        }
+
+        function updateIdentityChip() {
+            const chip = document.getElementById("identityChip");
+            if (!chip || !currentUser) {
+                return;
+            }
+            const modeText = currentUser.mode === "osu" ? "osu user" : "guest";
+            chip.textContent = "signed in as " + currentUser.name + " (" + modeText + ", team " + currentUser.team + ")";
+        }
+
+        function updateSaveNote(text) {
+            const note = document.getElementById("saveNote");
+            if (note) {
+                note.textContent = text;
+            }
+        }
+
+        async function persistCurrentScheduler() {
+            if (!schedulerDocRef) {
+                return;
+            }
+
+            // quick cleanup so names don't duplicate forever
+            for (let d = 0; d < DAYS.length; d++) {
+                const day = DAYS[d];
+                for (let h = 0; h < HOURS; h++) {
+                    availability[day][h].A = ensureUniqueNames(availability[day][h].A);
+                    availability[day][h].B = ensureUniqueNames(availability[day][h].B);
+                }
+            }
+
+            await setDoc(schedulerDocRef, {
+                teamNames: getTeamNames(),
+                availability: availability,
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+
+            updateSaveNote("saved");
+        }
+
+        function createHeadRow(grid) {
+            const left = document.createElement("div");
+            left.className = "cell head-cell head-left";
+            left.textContent = "Time: (in UTC)";
+            grid.appendChild(left);
+
+            for (let h = 0; h < HOURS; h++) {
+                const c = document.createElement("div");
+                c.className = "cell head-cell";
+                c.textContent = String(h).padStart(2, "0");
+                grid.appendChild(c);
+            }
+        }
+
+        function isNameInSlot(day, hour, team, name) {
+            const arr = availability[day][hour][team];
+            const low = name.toLowerCase();
+            for (let i = 0; i < arr.length; i++) {
+                if (arr[i].toLowerCase() === low) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function removeNameFromAllTeams(day, hour, name) {
+            const low = name.toLowerCase();
+            const teams = ["A", "B"];
+            for (let i = 0; i < teams.length; i++) {
+                const team = teams[i];
+                availability[day][hour][team] = availability[day][hour][team].filter((n) => n.toLowerCase() !== low);
+            }
+        }
+
+        function getSlotInfo(day, hour) {
+            const a = availability[day][hour].A;
+            const b = availability[day][hour].B;
+            return {
+                aCount: a.length,
+                bCount: b.length,
+                total: a.length + b.length,
+                bothTeamsHavePeople: a.length > 0 && b.length > 0
+            };
+        }
+
+        function showSlotHoverCard(day, hour, mouseX, mouseY) {
+            const card = document.getElementById("slotHoverCard");
+            if (!card) {
+                return;
+            }
+
+            const teamNames = getTeamNames();
+            const teamAUsers = availability[day][hour].A;
+            const teamBUsers = availability[day][hour].B;
+            const total = teamAUsers.length + teamBUsers.length;
+
+            if (total === 0) {
+                card.style.display = "none";
+                return;
+            }
+
+            const aText = teamAUsers.length > 0 ? teamAUsers.join(", ") : "nothing yet";
+            const bText = teamBUsers.length > 0 ? teamBUsers.join(", ") : "nothing yet";
+
+            card.innerHTML =
+                "<div class='slot-hover-title'>" + day + " - " + formatSimpleUtcHour(hour) + "</div>" +
+                "<div class='slot-hover-line'><strong>" + escapeHtml(teamNames.A) + ":</strong> " + escapeHtml(aText) + "</div>" +
+                "<div class='slot-hover-line'><strong>" + escapeHtml(teamNames.B) + ":</strong> " + escapeHtml(bText) + "</div>";
+
+            card.style.display = "block";
+            card.style.left = (mouseX + 12) + "px";
+            card.style.top = (mouseY + 12) + "px";
+        }
+
+        function hideSlotHoverCard() {
+            const card = document.getElementById("slotHoverCard");
+            if (!card) {
+                return;
+            }
+            card.style.display = "none";
+        }
+
+        function canCurrentUserEditTeam(team) {
+            if (!currentUser) {
+                return false;
+            }
+            return currentUser.team === team;
+        }
+
+        function refreshSlotLocks() {
+            document.querySelectorAll(".slot").forEach((slot) => {
+                const slotTeam = slot.dataset.team;
+                if (canCurrentUserEditTeam(slotTeam)) {
+                    slot.classList.remove("locked");
+                } else {
+                    slot.classList.add("locked");
+                }
+            });
+        }
+
+        function paintSlotClass(slot) {
+            const day = slot.dataset.day;
+            const team = slot.dataset.team;
+            const hour = Number(slot.dataset.hour);
+            slot.classList.remove("team-a", "team-b", "both");
+
+            const info = getSlotInfo(day, hour);
+            if (info.bothTeamsHavePeople) {
+                slot.classList.add("both");
+            } else {
+                const count = availability[day][hour][team].length;
+                if (count > 0) {
+                    slot.classList.add(team === "A" ? "team-a" : "team-b");
+                }
+            }
+
+            const countBox = slot.querySelector(".slot-count");
+            if (countBox) {
+                countBox.textContent = availability[day][hour][team].length > 0 ? String(availability[day][hour][team].length) : "";
+            }
+        }
+
+        function updateAllSlotClasses() {
+            document.querySelectorAll(".slot").forEach((slot) => {
+                paintSlotClass(slot);
+            });
+        }
+
+        function updateOverlapList() {
+            const list = document.getElementById("overlapList");
+            if (!list) {
+                return;
+            }
+
+            const names = getTeamNames();
+            const overlaps = [];
+
+            for (let d = 0; d < DAYS.length; d++) {
+                const day = DAYS[d];
+                for (let h = 0; h < HOURS; h++) {
+                    const aLen = availability[day][h].A.length;
+                    const bLen = availability[day][h].B.length;
+                    if (aLen > 0 && bLen > 0) {
+                        overlaps.push({
+                            label: day + " " + formatSimpleUtcHour(h),
+                            score: aLen + bLen,
+                            details: names.A + ": " + aLen + " / " + names.B + ": " + bLen
+                        });
+                    }
+                }
+            }
+
+            overlaps.sort((x, y) => y.score - x.score);
+
+            list.innerHTML = "";
+            if (overlaps.length === 0) {
+                const li = document.createElement("li");
+                li.textContent = "nothing yet";
+                list.style.listStyleType = "none";
+                list.style.paddingLeft = "0";
+                list.appendChild(li);
+                return;
+            }
+
+            list.style.listStyleType = "decimal";
+            list.style.paddingLeft = "18px";
+
+            const max = Math.min(3, overlaps.length);
+            for (let i = 0; i < max; i++) {
+                const li = document.createElement("li");
+                li.innerHTML = "<strong>" + escapeHtml(overlaps[i].label) + "</strong> - " + escapeHtml(overlaps[i].details);
+                list.appendChild(li);
+            }
+        }
+
+        function toggleTeamHour(day, team, hour, forceValue) {
+            if (!currentUser || !canCurrentUserEditTeam(team)) {
+                return false;
+            }
+
+            const name = currentUser.name;
+            const currentlyIn = isNameInSlot(day, hour, team, name);
+            const nextValue = typeof forceValue === "boolean" ? forceValue : !currentlyIn;
+
+            // remove old marks from both teams for this hour/day first
+            removeNameFromAllTeams(day, hour, name);
+
+            // add back only if the result should be selected
+            if (nextValue) {
+                availability[day][hour][team].push(name);
+            }
+
+            const slot = document.querySelector(
+                ".slot[data-day='" + day + "'][data-team='" + team + "'][data-hour='" + hour + "']"
+            );
+
+            if (slot) {
+                paintSlotClass(slot);
+            }
+
+            // this refreshes other row too for same hour/day
+            const otherTeam = team === "A" ? "B" : "A";
+            const otherSlot = document.querySelector(
+                ".slot[data-day='" + day + "'][data-team='" + otherTeam + "'][data-hour='" + hour + "']"
+            );
+            if (otherSlot) {
+                paintSlotClass(otherSlot);
+            }
+
+            updateOverlapList();
+            persistCurrentScheduler();
+            return nextValue;
+        }
+
+        async function clearMyAvailability() {
+            if (!currentUser) {
+                return;
+            }
+            const low = currentUser.name.toLowerCase();
+            for (let d = 0; d < DAYS.length; d++) {
+                const day = DAYS[d];
+                for (let h = 0; h < HOURS; h++) {
+                    availability[day][h].A = availability[day][h].A.filter((n) => n.toLowerCase() !== low);
+                    availability[day][h].B = availability[day][h].B.filter((n) => n.toLowerCase() !== low);
+                }
+            }
+            updateAllSlotClasses();
+            updateOverlapList();
+            await persistCurrentScheduler();
+        }
+
+        function createTeamRow(grid, day, team) {
+            const labelCell = document.createElement("div");
+            labelCell.className = "cell label-cell";
+            labelCell.innerHTML = "<span class='team-tag " + team.toLowerCase() + "'>" +
+                "availability</span>" +
+                "<strong data-team-label='" + team + "'>Team " + team + "</strong>";
+            grid.appendChild(labelCell);
+
+            for (let h = 0; h < HOURS; h++) {
+                const slot = document.createElement("div");
+                slot.className = "cell slot";
+                slot.dataset.day = day;
+                slot.dataset.team = team;
+                slot.dataset.hour = String(h);
+                slot.innerHTML = "<span class='slot-count'></span>";
+                paintSlotClass(slot);
+
+                slot.addEventListener("mousedown", (event) => {
+                    event.preventDefault();
+                    if (!canCurrentUserEditTeam(team)) {
+                        return;
+                    }
+                    dragState.isDown = true;
+                    const newValue = toggleTeamHour(day, team, h);
+                    dragState.valueToSet = newValue;
+                });
+
+                slot.addEventListener("mouseenter", () => {
+                    if (!dragState.isDown) {
+                        return;
+                    }
+                    if (!canCurrentUserEditTeam(team)) {
+                        return;
+                    }
+                    toggleTeamHour(day, team, h, dragState.valueToSet);
+                });
+
+                slot.addEventListener("mousemove", (event) => {
+                    showSlotHoverCard(day, h, event.clientX, event.clientY);
+                });
+
+                slot.addEventListener("mouseleave", () => {
+                    hideSlotHoverCard();
+                });
+
+                grid.appendChild(slot);
+            }
+        }
+
+        function createDaySection(day) {
+            const section = document.createElement("section");
+            section.className = "day-section";
+
+            const header = document.createElement("div");
+            header.className = "day-header";
+            header.innerHTML =
+                "<h2 class='day-title'>" + day + "</h2>" +
+                "<p class='day-note'>all times listed in UTC</p>";
+
+            const wrap = document.createElement("div");
+            wrap.className = "day-grid-wrap";
+
+            const grid = document.createElement("div");
+            grid.className = "day-grid";
+
+            createHeadRow(grid);
+            createTeamRow(grid, day, "A");
+            createTeamRow(grid, day, "B");
+
+            wrap.appendChild(grid);
+            section.appendChild(header);
+            section.appendChild(wrap);
+            return section;
+        }
+
+        function renderMainPage() {
+            const app = document.getElementById("app");
+            app.innerHTML = "";
+
+            const page = document.createElement("div");
+            page.className = "page";
+
+            const header = document.createElement("header");
+            header.className = "header";
+            header.innerHTML =
+                "<div class='header-main-row'>" +
+                "<div class='header-left'>" +
+                "<h1 class='title'><a class='title-link' href='index.html'>osu! Tournament Scheduler</a></h1>" +
+                "<div class='room-code'>room id: " + escapeHtml(schedulerId) + "</div>" +
+                "<div id='identityChip' class='identity-chip'></div>" +
+                "</div>" +
+                "<div id='expiryChip' class='expiry-chip'>expires in ...</div>" +
+                "</div>";
+
+            const top = document.createElement("section");
+            top.className = "top-controls";
+            top.innerHTML =
+                "<div class='field-card'>" +
+                "<label class='field-label' for='teamAName'>Team A Name</label>" +
+                "<input id='teamAName' class='field-input' value='Team A'>" +
+                "</div>" +
+                "<div class='field-card'>" +
+                "<label class='field-label' for='teamBName'>Team B Name</label>" +
+                "<input id='teamBName' class='field-input' value='Team B'>" +
+                "</div>";
+
+            const utility = document.createElement("section");
+            utility.className = "utility";
+            utility.innerHTML =
+                "<div class='utility-team'>" +
+                "<label class='field-label' for='activeTeamSelect'>Your Team</label>" +
+                "<select id='activeTeamSelect' class='team-select'>" +
+                "<option value='A'>Team A</option>" +
+                "<option value='B'>Team B</option>" +
+                "</select>" +
+                "</div>" +
+                "<button id='copyRoomBtn' class='btn'>Copy room link</button>" +
+                "<button id='clearMineBtn' class='btn'>Clear my availability</button>" +
+                "<button id='switchIdentityBtn' class='btn'>Switch user</button>" +
+                "<button id='deleteRoomBtn' class='btn btn-danger'>Delete room</button>" +
+                "<span id='saveNote' class='save-note'>ready</span>";
+
+            const overlap = document.createElement("section");
+            overlap.className = "overlap-card";
+            overlap.innerHTML =
+                "<h2 class='overlap-title'>Best overlap times (UTC)</h2>" +
+                "<ol class='overlap-list' id='overlapList'></ol>";
+
+            const main = document.createElement("main");
+            main.id = "daysContainer";
+
+            const footer = document.createElement("footer");
+            footer.innerHTML = "";
+
+            page.appendChild(header);
+            page.appendChild(top);
+            page.appendChild(utility);
+            page.appendChild(overlap);
+            page.appendChild(main);
+            page.appendChild(footer);
+            app.appendChild(page);
+        }
+
+        function renderScheduleRows() {
+            const daysContainer = document.getElementById("daysContainer");
+            daysContainer.innerHTML = "";
+            for (let i = 0; i < DAYS.length; i++) {
+                daysContainer.appendChild(createDaySection(DAYS[i]));
+            }
+            updateAllTeamLabels();
+            updateAllSlotClasses();
+        }
+
+        function renderMissingPage() {
+            const app = document.getElementById("app");
+            app.innerHTML =
+                "<div class='missing-wrap'>" +
+                "<h2>scheduler not found</h2>" +
+                "<p>this scheduler link does not exist.</p>" +
+                "<p><a class='home-link' href='index.html'>go to home page</a></p>" +
+                "<footer>" +
+                "" +
+                "</footer>" +
+                "</div>";
+        }
+
+        function isExpiredTimestamp(value) {
+            if (!value) {
+                return false;
+            }
+
+            let millis = NaN;
+            if (typeof value.toMillis === "function") {
+                millis = value.toMillis();
+            } else if (typeof value.seconds === "number") {
+                millis = value.seconds * 1000;
+            }
+
+            if (!Number.isFinite(millis)) {
+                return false;
+            }
+            return Date.now() >= millis;
+        }
+
+        function getTimestampMillis(value) {
+            if (!value) {
+                return NaN;
+            }
+            if (typeof value.toMillis === "function") {
+                return value.toMillis();
+            }
+            if (typeof value.seconds === "number") {
+                return value.seconds * 1000;
+            }
+            return NaN;
+        }
+
+        function setExpiryChipText() {
+            const chip = document.getElementById("expiryChip");
+            if (!chip) {
+                return;
+            }
+
+            const millis = getTimestampMillis(roomExpiresAt);
+            if (!Number.isFinite(millis)) {
+                chip.textContent = "room expiry: unknown";
+                return;
+            }
+
+            const diff = millis - Date.now();
+            if (diff <= 0) {
+                chip.textContent = "room expired";
+                return;
+            }
+
+            const totalHours = Math.floor(diff / (60 * 60 * 1000));
+            const days = Math.floor(totalHours / 24);
+            const hours = totalHours % 24;
+            chip.textContent = "expires in " + days + "d " + hours + "h";
+        }
+
+        function loadSchedulerDataIntoMemory(data) {
+            if (!data || !data.availability) {
+                return;
+            }
+            for (let i = 0; i < DAYS.length; i++) {
+                const day = DAYS[i];
+                availability[day] = normalizeDayData(data.availability[day]);
+            }
+        }
+
+        function bindMainEvents() {
+            document.addEventListener("mouseup", () => {
+                dragState.isDown = false;
+            });
+
+            document.getElementById("teamAName").addEventListener("input", async () => {
+                updateAllTeamLabels();
+                await persistCurrentScheduler();
+            });
+
+            document.getElementById("teamBName").addEventListener("input", async () => {
+                updateAllTeamLabels();
+                await persistCurrentScheduler();
+            });
+
+            document.getElementById("activeTeamSelect").addEventListener("change", (e) => {
+                if (currentUser) {
+                    currentUser.team = e.target.value;
+                    saveCurrentIdentity();
+                    updateIdentityChip();
+                    refreshSlotLocks();
+                }
+            });
+
+            document.getElementById("copyRoomBtn").addEventListener("click", async () => {
+                const url = window.location.href;
+                try {
+                    await navigator.clipboard.writeText(url);
+                    updateSaveNote("room link copied");
+                } catch (err) {
+                    updateSaveNote("copy failed");
+                }
+            });
+
+            document.getElementById("clearMineBtn").addEventListener("click", async () => {
+                await clearMyAvailability();
+            });
+
+            document.getElementById("switchIdentityBtn").addEventListener("click", () => {
+                currentUser = null;
+                localStorage.removeItem(IDENT_KEY + "_" + schedulerId);
+                refreshSlotLocks();
+                showLoginOverlay();
+            });
+
+            document.getElementById("deleteRoomBtn").addEventListener("click", () => {
+                showDeleteOverlay();
+            });
+
+            document.getElementById("cancelDeleteRoomBtn").addEventListener("click", () => {
+                hideDeleteOverlay();
+            });
+
+            document.getElementById("confirmDeleteRoomBtn").addEventListener("click", async () => {
+                await deleteCurrentRoom();
+            });
+        }
+
+        function saveCurrentIdentity() {
+            if (!currentUser) {
+                return;
+            }
+            localStorage.setItem(IDENT_KEY + "_" + schedulerId, JSON.stringify(currentUser));
+        }
+
+        function loadSavedIdentity() {
+            const raw = localStorage.getItem(IDENT_KEY + "_" + schedulerId);
+            if (!raw) {
+                return null;
+            }
+            try {
+                const parsed = JSON.parse(raw);
+                if (!parsed.name || !parsed.team) {
+                    return null;
+                }
+                return parsed;
+            } catch (err) {
+                return null;
+            }
+        }
+
+        function showLoginOverlay() {
+            const overlay = document.getElementById("loginOverlay");
+            overlay.classList.add("show");
+        }
+
+        function hideLoginOverlay() {
+            const overlay = document.getElementById("loginOverlay");
+            overlay.classList.remove("show");
+        }
+
+        function showDeleteOverlay() {
+            const overlay = document.getElementById("deleteOverlay");
+            overlay.classList.add("show");
+        }
+
+        function hideDeleteOverlay() {
+            const overlay = document.getElementById("deleteOverlay");
+            overlay.classList.remove("show");
+        }
+
+        async function deleteCurrentRoom() {
+            if (!schedulerDocRef) {
+                return;
+            }
+
+            const btn = document.getElementById("confirmDeleteRoomBtn");
+            btn.disabled = true;
+            try {
+                await deleteDoc(schedulerDocRef);
+                hideDeleteOverlay();
+                if (schedulerUnsub) {
+                    schedulerUnsub();
+                    schedulerUnsub = null;
+                }
+                renderMissingPage();
+            } catch (err) {
+                const code = err && err.code ? err.code : "";
+                alert("delete failed: " + (code || "permission denied or unknown error"));
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function getOAuthResultFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            const authTicket = params.get("auth_ticket");
+            const osuError = params.get("osu_error");
+
+            if (osuError) {
+                return { error: osuError };
+            }
+
+            if (!authTicket) {
+                return null;
+            }
+
+            return {
+                ticket: authTicket
+            };
+        }
+
+        function cleanOAuthQueryFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            params.delete("auth_ticket");
+            params.delete("osu_user");
+            params.delete("osu_team");
+            params.delete("osu_error");
+
+            const next = params.toString();
+            const newUrl = next ? ("?" + next) : window.location.pathname;
+            window.history.replaceState({}, "", newUrl);
+        }
+
+        async function consumeAuthTicket(ticket) {
+            // ask server to convert one-time ticket into actual user info
+            const consumeUrl = "/auth/osu/consume-ticket?ticket=" + encodeURIComponent(ticket) +
+                "&schedulerId=" + encodeURIComponent(schedulerId);
+
+            const resp = await fetch(consumeUrl);
+            const data = await resp.json();
+            if (!resp.ok) {
+                throw new Error(data.error || "ticket exchange failed");
+            }
+            return data;
+        }
+
+        function setIdentityAndContinue(mode, name, team) {
+            currentUser = {
+                mode: mode,
+                name: name.trim(),
+                team: team
+            };
+
+            saveCurrentIdentity();
+            hideLoginOverlay();
+            updateIdentityChip();
+
+            const activeTeamSelect = document.getElementById("activeTeamSelect");
+            if (activeTeamSelect) {
+                activeTeamSelect.value = currentUser.team;
+            }
+
+            updateSaveNote("signed in as " + currentUser.name);
+            refreshSlotLocks();
+        }
+
+        function setupLoginFlow() {
+            const overlay = document.getElementById("loginOverlay");
+            const modeSelect = document.getElementById("loginModeSelect");
+            const teamSelect = document.getElementById("loginTeamSelect");
+            const nameInput = document.getElementById("loginNameInput");
+            const continueBtn = document.getElementById("loginContinueBtn");
+
+            function syncLoginModeUi() {
+                const mode = modeSelect.value;
+                const nameLabel = document.querySelector("label[for='loginNameInput']");
+                if (mode === "osu") {
+                    nameInput.placeholder = "this will be pulled from osu login";
+                    nameInput.disabled = true;
+                    nameInput.value = "";
+                    if (nameLabel) {
+                        nameLabel.textContent = "USERNAME";
+                    }
+                } else {
+                    nameInput.placeholder = "enter your guest name";
+                    nameInput.disabled = false;
+                    if (nameLabel) {
+                        nameLabel.textContent = "Your Name";
+                    }
+                }
+            }
+
+            continueBtn.addEventListener("click", () => {
+                const mode = modeSelect.value;
+                if (mode === "osu") {
+                    const team = teamSelect.value;
+                    const loginUrl = "/auth/osu/start?schedulerId=" + encodeURIComponent(schedulerId) + "&team=" + encodeURIComponent(team);
+                    window.location.href = loginUrl;
+                    return;
+                }
+
+                const typedName = nameInput.value.trim();
+                if (!typedName) {
+                    alert("please enter your name");
+                    return;
+                }
+
+                setIdentityAndContinue(mode, typedName, teamSelect.value);
+            });
+
+            modeSelect.addEventListener("change", syncLoginModeUi);
+            syncLoginModeUi();
+
+            // click outside modal does nothing on purpose
+            overlay.addEventListener("click", (event) => {
+                if (event.target === overlay) {
+                    return;
+                }
+            });
+
+            const deleteOverlay = document.getElementById("deleteOverlay");
+            deleteOverlay.addEventListener("click", (event) => {
+                // clicking dark background closes delete modal
+                if (event.target === deleteOverlay) {
+                    hideDeleteOverlay();
+                }
+            });
+        }
+
+        async function start() {
+            buildInitialState();
+
+            try {
+                await ensureFirebaseAuth();
+            } catch (err) {
+                console.error("firebase auth setup failed", err);
+                alert(explainFirebaseSetupError(err));
+                return;
+            }
+
+            const params = new URLSearchParams(window.location.search);
+            schedulerId = params.get("id") || "";
+            if (!schedulerId) {
+                renderMissingPage();
+                return;
+            }
+
+            schedulerDocRef = doc(db, "schedulers", schedulerId);
+            const snapshot = await getDoc(schedulerDocRef);
+            if (!snapshot.exists()) {
+                renderMissingPage();
+                return;
+            }
+
+            const room = snapshot.data();
+            if (isExpiredTimestamp(room.expiresAt)) {
+                renderMissingPage();
+                return;
+            }
+            roomExpiresAt = room.expiresAt || null;
+            loadSchedulerDataIntoMemory(room);
+            renderMainPage();
+            setExpiryChipText();
+            renderScheduleRows();
+            bindMainEvents();
+            setupLoginFlow();
+
+            if (room.teamNames) {
+                document.getElementById("teamAName").value = room.teamNames.A || "Team A";
+                document.getElementById("teamBName").value = room.teamNames.B || "Team B";
+            }
+
+            updateAllTeamLabels();
+            updateOverlapList();
+
+            schedulerUnsub = onSnapshot(schedulerDocRef, (snap) => {
+                if (!snap.exists()) {
+                    if (schedulerUnsub) {
+                        schedulerUnsub();
+                        schedulerUnsub = null;
+                    }
+                    renderMissingPage();
+                    return;
+                }
+
+                const latest = snap.data();
+                if (isExpiredTimestamp(latest.expiresAt)) {
+                    if (schedulerUnsub) {
+                        schedulerUnsub();
+                        schedulerUnsub = null;
+                    }
+                    renderMissingPage();
+                    return;
+                }
+                roomExpiresAt = latest.expiresAt || null;
+                setExpiryChipText();
+                if (latest.teamNames) {
+                    document.getElementById("teamAName").value = latest.teamNames.A || "Team A";
+                    document.getElementById("teamBName").value = latest.teamNames.B || "Team B";
+                }
+                loadSchedulerDataIntoMemory(latest);
+                updateAllTeamLabels();
+                updateAllSlotClasses();
+                updateOverlapList();
+            });
+
+            const oauthResult = getOAuthResultFromUrl();
+            if (oauthResult && oauthResult.error) {
+                cleanOAuthQueryFromUrl();
+                alert("osu login failed: " + oauthResult.error);
+                showLoginOverlay();
+                return;
+            }
+
+            if (oauthResult && oauthResult.ticket) {
+                try {
+                    const auth = await consumeAuthTicket(oauthResult.ticket);
+                    setIdentityAndContinue("osu", auth.user, auth.team === "B" ? "B" : "A");
+                    cleanOAuthQueryFromUrl();
+                } catch (err) {
+                    cleanOAuthQueryFromUrl();
+                    alert("osu login failed: " + (err.message || "ticket error"));
+                    showLoginOverlay();
+                    return;
+                }
+            } else {
+                const saved = loadSavedIdentity();
+                if (saved) {
+                    currentUser = saved;
+                    updateIdentityChip();
+                    document.getElementById("activeTeamSelect").value = currentUser.team;
+                } else {
+                    showLoginOverlay();
+                }
+            }
+
+            refreshSlotLocks();
+        }
+
+        start();
+    </script>
+</body>
+</html>

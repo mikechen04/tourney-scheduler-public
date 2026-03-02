@@ -1,0 +1,2 @@
+python -m http.server --cgi 8000
+node server.js
